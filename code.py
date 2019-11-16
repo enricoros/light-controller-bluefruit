@@ -132,17 +132,14 @@ class PixelEditor:
                 v = (idx * 256 // self.count) + self.autoHueBase
                 ePix.pixels[eIdx] = ePix.rgbWheel(v & 255)
             elif flicker != 0:
-                factor = random.random()
+                factor = (1 + random.random() + random.random()) / 3
                 color = tuple(int(factor * x) for x in color)
                 ePix.pixels[eIdx] = color
             else:
                 ePix.pixels[eIdx] = color
         self.epx1.update()
         self.epx2.update()
-        self.autoHueBase = self.autoHueBase + 5
-
-    def longPressA(self):
-        print("NOT IMPLEMENTED")
+        self.autoHueBase = self.autoHueBase + 1
 
     def longPressB(self):
         self.applyDefaults()
@@ -196,12 +193,15 @@ class PixelEditor:
         self.__blinkIdx(COLOR_RED)
         self.__save()
 
-    def eColor(self, color):
+    def eColor(self, color, isAll):
         self.colors[self.idx] = color
-        # hack: for the inner circle, change all the colors at once
-        if self.idx >= self.count1:
-            for n in range(self.count2):
-                self.colors[self.count1 + n] = color
+        if isAll:
+            if self.idx < self.count1:
+                for n in range(self.count1):
+                    self.colors[n] = color
+            else:
+                for n in range(self.count2):
+                    self.colors[self.count1 + n] = color
         self.__save()
 
     def __moveIdx(self, idx):
@@ -270,11 +270,8 @@ while True:
                     print('unknown button: ' + command.value)
             # color
             elif command.kind is 2:
-                editor.eColor(command.value)
-        # A long press (4s)
-        if buttonPressedForLong(buttonA, 4, 50):
-            ePixelsLocal.blinkAll(0x080080, 4, 0.05)
-            editor.longPressA()
+                isAll = buttonPressed(buttonA)
+                editor.eColor(command.value, isAll)
         # B long press (4s)
         if buttonPressedForLong(buttonB, 4, 50):
             ePixelsLocal.blinkAll(0x000080, 4, 0.05)
@@ -291,8 +288,8 @@ while True:
         ePixels1.setDisableMask(10, 1 if colorMode == 0 else 0)
 
     if colorMode == 0:
+        time.sleep(0.05) # 20Hz limiter (good for flames)
         editor.loop()
-        time.sleep(frequencyLimiter) # halves the rate
     elif colorMode == 1:
         ePixels1.autoRainbowAll()
         ePixelsLocal.autoRainbowAll()
